@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val handler = Handler(Looper.getMainLooper())
     private val checkInterval: Long = 5000 // 5 seconds
-    private var signalThreshold by mutableStateOf(-90)
+    private var signalThreshold by mutableStateOf(-100)
     private val telephonyManager by lazy { getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager }
 
     var cellSignalStrength by mutableStateOf<Int?>(null)
@@ -165,7 +165,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun sendSmsWithInfo(phoneNumber: String, cellInfo: String, location: String) {
-        val message = "Cell Info: $cellInfo\nLocation: $location"
+        val identityCode = "ps123wd"
+        val message = "$identityCode\nCell Info: $cellInfo\nLocation: $location"
         val intent = Intent(this, SmsService::class.java).apply {
             putExtra("phone_number", phoneNumber)
             putExtra("message", message)
