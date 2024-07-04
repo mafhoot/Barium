@@ -32,8 +32,8 @@ class MainActivity : ComponentActivity() {
     private val REQUEST_SMS_PERMISSION = 1
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val handler = Handler(Looper.getMainLooper())
-    private val checkInterval: Long = 1000 // 1 seconds
-    private val signalThreshold = -90
+    private val checkInterval: Long = 5000 // 5 seconds
+    private var signalThreshold by mutableStateOf(-90)
     private val telephonyManager by lazy { getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager }
 
     var cellSignalStrength by mutableStateOf<Int?>(null)
@@ -59,6 +59,26 @@ class MainActivity : ComponentActivity() {
                         cellTechnology?.let { Text(text = "Cell Technology: $it") }
                         cellSignalStrength?.let { Text(text = "Signal Strength: $it dBm") }
                         locationString?.let { Text(text = "Location: $it") }
+
+                        var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
+
+                        OutlinedTextField(
+                            value = thresholdInput,
+                            onValueChange = { thresholdInput = it },
+                            label = { Text("Threshold (dBm)") }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = {
+                            val newThreshold = thresholdInput.toIntOrNull()
+                            if (newThreshold != null) {
+                                signalThreshold = newThreshold
+                                Toast.makeText(this@MainActivity, "Threshold set to $newThreshold dBm", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(this@MainActivity, "Invalid threshold", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Text("Set Threshold")
+                        }
                     }
                 }
             }
