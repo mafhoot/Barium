@@ -8,6 +8,8 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.telephony.*
 import android.util.Log
 import android.widget.Toast
@@ -30,6 +32,9 @@ import com.google.android.gms.tasks.Task
 class MainActivity : ComponentActivity() {
     private val REQUEST_SMS_PERMISSION = 1
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val handler = Handler(Looper.getMainLooper())
+    private val checkInterval: Long = 15000 // 15 seconds
+    private val signalThreshold = -87
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,8 +61,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(SEND_SMS, RECEIVE_SMS, READ_SMS, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION), REQUEST_SMS_PERMISSION)
         } else {
-            // Permissions are already granted
-            getCellAndLocationInfo()
+            startCheckingCellInfo()
         }
     }
 
@@ -65,15 +69,25 @@ class MainActivity : ComponentActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_SMS_PERMISSION) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                getCellAndLocationInfo()
+                startCheckingCellInfo()
             } else {
                 Toast.makeText(this, "Permission denied to send/receive SMS and access location", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    private fun startCheckingCellInfo() {
+        handler.post(checkCellInfoRunnable)
+    }
+
+    private val checkCellInfoRunnable = object : Runnable {
+        override fun run() {
+            getCellAndLocationInfo()
+            handler.postDelayed(this, checkInterval)
+        }
+    }
+
     private fun getCellAndLocationInfo() {
-        // Get cell info
         val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val cellInfo: List<CellInfo> = telephonyManager.allCellInfo
 
@@ -102,19 +116,20 @@ class MainActivity : ComponentActivity() {
             if (cellSignalStrength != null && cellTechnology != null) break
         }
 
-        // Get location info
-        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return
-        }
+        if (cellSignalStrength != null && cellSignalStrength < signalThreshold) {
+            if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return
+            }
 
-        val locationTask: Task<Location> = fusedLocationClient.lastLocation
-        locationTask.addOnSuccessListener { location ->
-            if (location != null) {
-                val locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
-                val cellInfoString = "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology"
-                sendSmsWithInfo("09100069381", cellInfoString, locationString)
-            } else {
-                Log.e("MainActivity", "Location is null")
+            val locationTask: Task<Location> = fusedLocationClient.lastLocation
+            locationTask.addOnSuccessListener { location ->
+                if (location != null) {
+                    val locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
+                    val cellInfoString = "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology"
+                    sendSmsWithInfo("1234567890", cellInfoString, locationString)
+                } else {
+                    Log.e("MainActivity", "Location is null")
+                }
             }
         }
     }
