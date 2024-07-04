@@ -3,6 +3,7 @@ package com.example.baruim1
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.util.Log
 import android.widget.Toast
 
 class SmsService : Service() {
@@ -29,6 +30,7 @@ class SmsService : Service() {
     private fun handleReceivedSms(sender: String, message: String) {
         // Process the received SMS here
         Toast.makeText(this, "Received SMS from $sender: $message", Toast.LENGTH_SHORT).show()
+        Log.d("SmsService", "Received SMS from $sender: $message")
         // Add your processing logic here
     }
 }
