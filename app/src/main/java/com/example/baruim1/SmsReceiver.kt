@@ -6,12 +6,14 @@ import android.content.Intent
 import android.os.Bundle
 import android.telephony.SmsMessage
 import android.util.Log
+import android.widget.Toast
 
 class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d("SmsReceiver", "onReceive called")
         if (intent.action == "android.provider.Telephony.SMS_RECEIVED") {
             Log.d("SmsReceiver", "SMS received")
+            Toast.makeText(context, "SMS received", Toast.LENGTH_SHORT).show()
             val bundle = intent.extras
             if (bundle != null) {
                 try {
@@ -22,7 +24,7 @@ class SmsReceiver : BroadcastReceiver() {
                         val sender = messages[i]?.originatingAddress
                         val messageBody = messages[i]?.messageBody
                         if (sender != null && messageBody != null) {
-                            // Start the service with the received message
+                            Log.d("SmsReceiver", "SMS from $sender: $messageBody")
                             val serviceIntent = Intent(context, SmsService::class.java)
                             serviceIntent.putExtra("sender", sender)
                             serviceIntent.putExtra("message", messageBody)
