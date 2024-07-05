@@ -1,8 +1,10 @@
 package com.example.baruim1
 
 import android.Manifest.permission.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -15,6 +17,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,23 +35,31 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.Task
 import java.util.*
 
+data class MessageStatus(
+    val id: String,
+    var status: String
+)
+
 class MainActivity : ComponentActivity() {
     private val REQUEST_SMS_PERMISSION = 1
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val handler = Handler(Looper.getMainLooper())
     private var signalThreshold by mutableStateOf(-100)
     private var checkInterval by mutableStateOf(5000L)
-    private var destinationPhoneNumber by mutableStateOf("09335872053")
+    private var destinationPhoneNumber by mutableStateOf("1234567890")
     private val telephonyManager by lazy { getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager }
 
     var cellSignalStrength by mutableStateOf<Int?>(null)
     var cellTechnology by mutableStateOf<String?>(null)
     var locationString by mutableStateOf<String?>(null)
+    var messageStatuses by mutableStateOf(listOf<MessageStatus>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestPermissions()
+
+        registerReceiver(smsReceiver, IntentFilter("android.provider.Telephony.SMS_RECEIVED"))
 
         setContent {
             Baruim1Theme {
@@ -147,6 +159,22 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(messageStatuses) { messageStatus ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = messageStatus.id)
+                                    Text(text = messageStatus.status)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -223,7 +251,9 @@ class MainActivity : ComponentActivity() {
                     if (location != null) {
                         locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
                         val cellInfoString = "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology"
-                        sendSmsWithInfo(destinationPhoneNumber, cellInfoString, locationString!!)
+                        val uniqueId = UUID.randomUUID().toString() // Generate a unique ID
+                        messageStatuses = messageStatuses + MessageStatus(uniqueId, "Sent") // Add message ID to the list
+                        sendSmsWithInfo(destinationPhoneNumber, cellInfoString, locationString!!, uniqueId)
                     } else {
                         Log.e("MainActivity", "Location is null")
                     }
@@ -232,15 +262,44 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun sendSmsWithInfo(phoneNumber: String, cellInfo: String, location: String) {
+    private fun sendSmsWithInfo(phoneNumber: String, cellInfo: String, location: String, id: String) {
         val identityCode = "ps123wd"
-        val uniqueId = UUID.randomUUID().toString() // Generate a unique ID
-        val message = "$identityCode\nid: $uniqueId\nCell Info: $cellInfo\nLocation: $location"
+        val message = "$identityCode\nid: $id\nCell Info: $cellInfo\nLocation: $location"
         val intent = Intent(this, SmsService::class.java).apply {
             putExtra("phone_number", phoneNumber)
             putExtra("message", message)
         }
         startService(intent)
+    }
+
+    private val smsReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == "android.provider.Telephony.SMS_RECEIVED") {
+                val bundle = intent.extras
+                if (bundle != null) {
+                    val pdus = bundle.get("pdus") as Array<*>
+                    val messages: Array<SmsMessage?> = arrayOfNulls(pdus.size)
+                    for (i in pdus.indices) {
+                        messages[i] = SmsMessage.createFromPdu(pdus[i] as ByteArray)
+                        val sender = messages[i]?.originatingAddress
+                        val messageBody = messages[i]?.messageBody
+                        if (sender != null && messageBody != null) {
+                            if (messageBody.startsWith("Acknowledgment:")) {
+                                val id = messageBody.substringAfter("id: ").trim()
+                                messageStatuses = messageStatuses.map {
+                                    if (it.id == id) it.copy(status = "Delivered") else it
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(smsReceiver)
     }
 }
 
