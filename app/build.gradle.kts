@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.baruim1"
+        applicationId = "com.example.BariumClient"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
