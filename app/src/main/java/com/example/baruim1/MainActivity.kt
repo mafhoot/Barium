@@ -15,7 +15,9 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,10 +47,12 @@ class MainActivity : ComponentActivity() {
     var cellTechnology by mutableStateOf<String?>(null)
     var locationString by mutableStateOf<String?>(null)
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestPermissions()
+
 
         setContent {
             Baruim1Theme {
@@ -66,9 +70,10 @@ class MainActivity : ComponentActivity() {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 32.dp) // Increase space between box and fields
+                                .padding(bottom = 16.dp) // Increase space between box and fields
                                 .background(Color.Black, shape = MaterialTheme.shapes.small) // Gray background with border radius
                                 .padding(16.dp) // Padding inside the box
+
                         ) {
                             Column {
                                 cellTechnology?.let {
@@ -102,6 +107,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                         Text(text = it, modifier = Modifier.weight(1f))
                                     }
+
                                 }
                             }
                         }
@@ -130,7 +136,8 @@ class MainActivity : ComponentActivity() {
                             value = intervalInput,
                             onValueChange = { intervalInput = it },
                             label = { Text("Check Interval (ms)") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
@@ -148,7 +155,9 @@ class MainActivity : ComponentActivity() {
                                     Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+
                         ) {
                             Text("Set Parameters")
                         }
@@ -217,34 +226,18 @@ class MainActivity : ComponentActivity() {
             if (cellSignalStrength != null && cellTechnology != null) break
         }
 
-        if (cellSignalStrength != null) {
-            if (cellSignalStrength!! < signalThreshold) {
-                if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    return
-                }
+        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
 
-                val locationTask: Task<Location> = fusedLocationClient.lastLocation
-                locationTask.addOnSuccessListener { location ->
-                    if (location != null) {
-                        locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
-                        val cellInfoString = "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology"
-                        sendSmsWithInfo(destinationPhoneNumber, cellInfoString, locationString!!)
-                    } else {
-                        Log.e("MainActivity", "Location is null")
-                    }
-                }
+        val locationTask: Task<Location> = fusedLocationClient.lastLocation
+        locationTask.addOnSuccessListener { location ->
+            if (location != null) {
+                locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
+            } else {
+                Log.e("MainActivity", "Location is null")
             }
         }
-    }
-
-    private fun sendSmsWithInfo(phoneNumber: String, cellInfo: String, location: String) {
-        val identityCode = "ps123wd"
-        val message = "$identityCode\nCell Info: $cellInfo\nLocation: $location"
-        val intent = Intent(this, SmsService::class.java).apply {
-            putExtra("phone_number", phoneNumber)
-            putExtra("message", message)
-        }
-        startService(intent)
     }
 }
 
