@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -60,11 +61,44 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        cellTechnology?.let { Text(text = "Cell Technology: $it") }
-                        cellSignalStrength?.let { Text(text = "Signal Strength: $it dBm") }
-                        locationString?.let { Text(text = "Location: $it") }
-
-                        Spacer(modifier = Modifier.height(16.dp)) // Add space between real-time data and input fields
+                        if (cellTechnology != null || cellSignalStrength != null || locationString != null) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp) // Space between real-time data and input fields
+                            ) {
+                                cellTechnology?.let {
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = "Cell Technology: ",
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(text = it, modifier = Modifier.weight(1f))
+                                    }
+                                }
+                                cellSignalStrength?.let {
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = "Signal Strength: ",
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(text = "$it dBm", modifier = Modifier.weight(1f))
+                                    }
+                                }
+                                locationString?.let {
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = "Location: ",
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(text = it, modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
 
                         var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
                         var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
@@ -203,5 +237,21 @@ class MainActivity : ComponentActivity() {
             putExtra("message", message)
         }
         startService(intent)
+    }
+}
+
+@Composable
+fun Greeting(name: String, modifier: Modifier = Modifier) {
+    Text(
+        text = "Hello $name!",
+        modifier = modifier
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GreetingPreview() {
+    Baruim1Theme {
+        Greeting("Android")
     }
 }
