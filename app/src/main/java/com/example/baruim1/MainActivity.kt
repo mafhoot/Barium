@@ -6,16 +6,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.telephony.*
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -46,13 +48,17 @@ class MainActivity : ComponentActivity() {
     var cellSignalStrength by mutableStateOf<Int?>(null)
     var cellTechnology by mutableStateOf<String?>(null)
     var locationString by mutableStateOf<String?>(null)
-
+    var showLocationDialog by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        requestPermissions()
 
+        if (!isLocationEnabled()) {
+            showLocationDialog = true
+        } else {
+            requestPermissions()
+        }
 
         setContent {
             Baruim1Theme {
@@ -67,103 +73,132 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp) // Increase space between box and fields
-                                .background(Color.Black, shape = MaterialTheme.shapes.small) // Gray background with border radius
-                                .padding(16.dp) // Padding inside the box
-
-                        ) {
-                            Column {
-                                cellTechnology?.let {
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = "Cell Technology: ",
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(text = it, modifier = Modifier.weight(1f))
-                                    }
-                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                                }
-                                cellSignalStrength?.let {
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = "Signal Strength: ",
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(text = "$it dBm", modifier = Modifier.weight(1f))
-                                    }
-                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                                }
-                                locationString?.let {
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = "Location: ",
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(text = it, modifier = Modifier.weight(1f))
-                                    }
-
-                                }
-                            }
-                        }
-
-                        var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
-                        var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
-                        var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
-
-                        Spacer(modifier = Modifier.height(16.dp)) // Increased space between box and fields
-
-                        OutlinedTextField(
-                            value = thresholdInput,
-                            onValueChange = { thresholdInput = it },
-                            label = { Text("Threshold (dBm)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = phoneNumberInput,
-                            onValueChange = { phoneNumberInput = it },
-                            label = { Text("Destination Phone Number") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = intervalInput,
-                            onValueChange = { intervalInput = it },
-                            label = { Text("Check Interval (ms)") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                val newThreshold = thresholdInput.toIntOrNull()
-                                val newInterval = intervalInput.toLongOrNull()
-                                if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
-                                    signalThreshold = newThreshold
-                                    checkInterval = newInterval
-                                    destinationPhoneNumber = phoneNumberInput
-                                    Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
-                                    handler.removeCallbacks(checkCellInfoRunnable)
-                                    handler.post(checkCellInfoRunnable) // Restart with new interval
-                                } else {
-                                    Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-
-                        ) {
-                            Text("Set Parameters")
+                        if (showLocationDialog) {
+                            LocationDialog(onDismiss = {
+                                showLocationDialog = false
+                                requestPermissions()
+                            })
+                        } else {
+                            MainContent()
                         }
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    fun LocationDialog(onDismiss: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = "Location Services Off") },
+            text = { Text("Location services are turned off. Please enable them to use the app.") },
+            confirmButton = {
+                Button(onClick = {
+                    startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    onDismiss()
+                }) {
+                    Text("Enable Location")
+                }
+            },
+            dismissButton = {
+                Button(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    @Composable
+    fun MainContent() {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp) // Increase space between box and fields
+                .background(Color.Black, shape = RoundedCornerShape(8.dp)) // Gray background with border radius
+                .padding(16.dp) // Padding inside the box
+        ) {
+            Column {
+                cellTechnology?.let {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Cell Technology: ",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(text = it, modifier = Modifier.weight(1f))
+                    }
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+                cellSignalStrength?.let {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Signal Strength: ",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(text = "$it dBm", modifier = Modifier.weight(1f))
+                    }
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+                locationString?.let {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Location: ",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(text = it, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+
+        var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
+        var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
+        var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
+
+        Spacer(modifier = Modifier.height(16.dp)) // Increased space between box and fields
+
+        OutlinedTextField(
+            value = thresholdInput,
+            onValueChange = { thresholdInput = it },
+            label = { Text("Threshold (dBm)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = phoneNumberInput,
+            onValueChange = { phoneNumberInput = it },
+            label = { Text("Destination Phone Number") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = intervalInput,
+            onValueChange = { intervalInput = it },
+            label = { Text("Check Interval (ms)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                val newThreshold = thresholdInput.toIntOrNull()
+                val newInterval = intervalInput.toLongOrNull()
+                if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
+                    signalThreshold = newThreshold
+                    checkInterval = newInterval
+                    destinationPhoneNumber = phoneNumberInput
+                    Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
+                    handler.removeCallbacks(checkCellInfoRunnable)
+                    handler.post(checkCellInfoRunnable) // Restart with new interval
+                } else {
+                    Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Set Parameters")
         }
     }
 
@@ -188,6 +223,11 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Permission denied to send/receive SMS and access location", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun isLocationEnabled(): Boolean {
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
     private fun startCheckingCellInfo() {
