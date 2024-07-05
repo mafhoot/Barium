@@ -1,20 +1,18 @@
 package com.example.baruim1
 
 import android.Manifest.permission.*
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.telephony.*
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,14 +43,19 @@ class MainActivity : ComponentActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val handler = Handler(Looper.getMainLooper())
     private var signalThreshold by mutableStateOf(-100)
-    private var checkInterval by mutableStateOf(5000L)
-    private var destinationPhoneNumber by mutableStateOf("1234567890")
+    private var checkInterval by mutableStateOf(20000L)
+    private var destinationPhoneNumber by mutableStateOf("09335872053")
     private val telephonyManager by lazy { getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager }
 
     var cellSignalStrength by mutableStateOf<Int?>(null)
     var cellTechnology by mutableStateOf<String?>(null)
     var locationString by mutableStateOf<String?>(null)
     var messageStatuses by mutableStateOf(listOf<MessageStatus>())
+    var locationEnabled by mutableStateOf(false)
+
+    private val locationSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        checkLocationEnabled()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +63,8 @@ class MainActivity : ComponentActivity() {
         requestPermissions()
 
         registerReceiver(smsReceiver, IntentFilter("android.provider.Telephony.SMS_RECEIVED"))
+
+        checkLocationEnabled()
 
         setContent {
             Baruim1Theme {
@@ -74,110 +79,152 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.Black, shape = RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        ) {
-                            Column {
-                                cellTechnology?.let {
-                                    Text(
-                                        text = "Cell Technology: $it",
-                                        color = Color.White,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    )
-                                    Divider(color = Color.Gray)
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                cellSignalStrength?.let {
-                                    Text(
-                                        text = "Signal Strength: $it dBm",
-                                        color = Color.White,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    )
-                                    Divider(color = Color.Gray)
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                locationString?.let {
-                                    Text(
-                                        text = "Location: $it",
-                                        color = Color.White,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    )
-                                }
+                        if (!locationEnabled) {
+                            LocationAlertDialog {
+                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                locationSettingsLauncher.launch(intent)
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
-                        var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
-                        var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
-
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            Column {
-                                OutlinedTextField(
-                                    value = thresholdInput,
-                                    onValueChange = { thresholdInput = it },
-                                    label = { Text("Threshold (dBm)") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedTextField(
-                                    value = phoneNumberInput,
-                                    onValueChange = { phoneNumberInput = it },
-                                    label = { Text("Destination Phone Number") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedTextField(
-                                    value = intervalInput,
-                                    onValueChange = { intervalInput = it },
-                                    label = { Text("Check Interval (ms)") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(
-                                    onClick = {
-                                        val newThreshold = thresholdInput.toIntOrNull()
-                                        val newInterval = intervalInput.toLongOrNull()
-                                        if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
-                                            signalThreshold = newThreshold
-                                            checkInterval = newInterval
-                                            destinationPhoneNumber = phoneNumberInput
-                                            handler.removeCallbacks(checkCellInfoRunnable) // Reset the checking interval
-                                            startCheckingCellInfo() // Start with the new interval
-                                            Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("Submit")
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(messageStatuses) { messageStatus ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(text = messageStatus.id)
-                                    Text(text = messageStatus.status)
-                                }
-                            }
+                        } else {
+                            Content()
                         }
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    fun LocationAlertDialog(onEnableLocation: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = "Location Required") },
+            text = { Text(text = "This app requires location services to be enabled. Please turn on location services to continue.") },
+            confirmButton = {
+                Button(onClick = onEnableLocation) {
+                    Text("Enable Location")
+                }
+            }
+        )
+    }
+
+    @Composable
+    fun Content() {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black, shape = RoundedCornerShape(8.dp))
+                .padding(16.dp)
+        ) {
+            Column {
+                cellTechnology?.let {
+                    Text(
+                        text = "Cell Technology: $it",
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Divider(color = Color.Gray)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                cellSignalStrength?.let {
+                    Text(
+                        text = "Signal Strength: $it dBm",
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Divider(color = Color.Gray)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                locationString?.let {
+                    Text(
+                        text = "Location: $it",
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
+        var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
+        var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                OutlinedTextField(
+                    value = thresholdInput,
+                    onValueChange = { thresholdInput = it },
+                    label = { Text("Threshold (dBm)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = phoneNumberInput,
+                    onValueChange = { phoneNumberInput = it },
+                    label = { Text("Destination Phone Number") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = intervalInput,
+                    onValueChange = { intervalInput = it },
+                    label = { Text("Check Interval (ms)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val newThreshold = thresholdInput.toIntOrNull()
+                        val newInterval = intervalInput.toLongOrNull()
+                        if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
+                            signalThreshold = newThreshold
+                            checkInterval = newInterval
+                            destinationPhoneNumber = phoneNumberInput
+                            handler.removeCallbacks(checkCellInfoRunnable) // Reset the checking interval
+                            startCheckingCellInfo() // Start with the new interval
+                            Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Submit")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(messageStatuses) { messageStatus ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = messageStatus.id)
+                    Text(text = messageStatus.status)
+                }
+            }
+        }
+    }
+
+    private fun checkLocationEnabled() {
+        val locationMode = try {
+            Settings.Secure.getInt(contentResolver, Settings.Secure.LOCATION_MODE)
+        } catch (e: Settings.SettingNotFoundException) {
+            Settings.Secure.LOCATION_MODE_OFF
+        }
+
+        locationEnabled = locationMode != Settings.Secure.LOCATION_MODE_OFF
+
+        if (locationEnabled) {
+            startCheckingCellInfo()
         }
     }
 
@@ -236,26 +283,26 @@ class MainActivity : ComponentActivity() {
                     cellSignalStrength = info.cellSignalStrength.dbm
                     cellTechnology = "CDMA"
                 }
+                // Add more types if needed
             }
-            if (cellSignalStrength != null && cellTechnology != null) break
         }
 
-        if (cellSignalStrength != null) {
-            if (cellSignalStrength!! < signalThreshold) {
-                if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    return
-                }
+        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
 
-                val locationTask: Task<Location> = fusedLocationClient.lastLocation
-                locationTask.addOnSuccessListener { location ->
-                    if (location != null) {
-                        locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
-                        val cellInfoString = "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology"
-                        val uniqueId = UUID.randomUUID().toString() // Generate a unique ID
-                        messageStatuses = messageStatuses + MessageStatus(uniqueId, "Sent") // Add message ID to the list
-                        sendSmsWithInfo(destinationPhoneNumber, cellInfoString, locationString!!, uniqueId)
-                    } else {
-                        Log.e("MainActivity", "Location is null")
+        val locationTask: Task<Location> = fusedLocationClient.lastLocation
+        locationTask.addOnSuccessListener { location: Location? ->
+            location?.let {
+                val lat = location.latitude
+                val lon = location.longitude
+                locationString = "Lat: $lat, Long: $lon"
+
+                if (cellSignalStrength != null && cellTechnology != null) {
+                    if (cellSignalStrength!! < signalThreshold) {
+                        val messageId = UUID.randomUUID().toString()
+                        sendSmsWithInfo(destinationPhoneNumber, "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology", locationString!!, messageId)
+                        messageStatuses = messageStatuses + MessageStatus(messageId, "Sent")
                     }
                 }
             }
