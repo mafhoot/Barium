@@ -63,42 +63,49 @@ class MainActivity : ComponentActivity() {
                         var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
                         var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
 
-                        OutlinedTextField(
-                            value = thresholdInput,
-                            onValueChange = { thresholdInput = it },
-                            label = { Text("Threshold (dBm)") }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        OutlinedTextField(
-                            value = phoneNumberInput,
-                            onValueChange = { phoneNumberInput = it },
-                            label = { Text("Destination Phone Number") }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        OutlinedTextField(
-                            value = intervalInput,
-                            onValueChange = { intervalInput = it },
-                            label = { Text("Check Interval (ms)") }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Button(onClick = {
-                            val newThreshold = thresholdInput.toIntOrNull()
-                            val newInterval = intervalInput.toLongOrNull()
-                            if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
-                                signalThreshold = newThreshold
-                                checkInterval = newInterval
-                                destinationPhoneNumber = phoneNumberInput
-                                handler.removeCallbacks(checkCellInfoRunnable) // Reset the checking interval
-                                startCheckingCellInfo() // Start with the new interval
-                                Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
+                        Box(modifier = Modifier.padding(16.dp)) {
+                            Column {
+                                OutlinedTextField(
+                                    value = thresholdInput,
+                                    onValueChange = { thresholdInput = it },
+                                    label = { Text("Threshold (dBm)") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                OutlinedTextField(
+                                    value = phoneNumberInput,
+                                    onValueChange = { phoneNumberInput = it },
+                                    label = { Text("Destination Phone Number") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                OutlinedTextField(
+                                    value = intervalInput,
+                                    onValueChange = { intervalInput = it },
+                                    label = { Text("Check Interval (ms)") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = {
+                                        val newThreshold = thresholdInput.toIntOrNull()
+                                        val newInterval = intervalInput.toLongOrNull()
+                                        if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
+                                            signalThreshold = newThreshold
+                                            checkInterval = newInterval
+                                            destinationPhoneNumber = phoneNumberInput
+                                            handler.removeCallbacks(checkCellInfoRunnable) // Reset the checking interval
+                                            startCheckingCellInfo() // Start with the new interval
+                                            Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Submit")
+                                }
                             }
-                        }) {
-                            Text("Submit")
                         }
                     }
                 }
