@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -117,29 +118,60 @@ class MainActivity : ComponentActivity() {
         ) {
             Column {
                 cellTechnology?.let {
-                    Text(
-                        text = "Cell Technology: $it",
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Divider(color = Color.Gray)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Cell Technology:",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = it,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Divider(color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
                 cellSignalStrength?.let {
-                    Text(
-                        text = "Signal Strength: $it dBm",
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Divider(color = Color.Gray)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Signal Strength:",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "$it dBm",
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Divider(color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
                 locationString?.let {
-                    Text(
-                        text = "Location: $it",
-                        color = Color.White,
-                        
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Location:",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = it,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -201,14 +233,17 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxWidth()
         ) {
             items(messageStatuses) { messageStatus ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = messageStatus.id)
-                    Text(text = messageStatus.status)
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = messageStatus.id)
+                        Text(text = messageStatus.status)
+                    }
+                    Divider(color = Color.Gray)
                 }
             }
         }
