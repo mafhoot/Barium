@@ -14,11 +14,13 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -61,12 +63,14 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (cellTechnology != null || cellSignalStrength != null || locationString != null) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp) // Space between real-time data and input fields
-                            ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 32.dp) // Increase space between box and fields
+                                .background(Color.Black, shape = MaterialTheme.shapes.small) // Gray background with border radius
+                                .padding(16.dp) // Padding inside the box
+                        ) {
+                            Column {
                                 cellTechnology?.let {
                                     Row(modifier = Modifier.fillMaxWidth()) {
                                         Text(
@@ -76,6 +80,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                         Text(text = it, modifier = Modifier.weight(1f))
                                     }
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
                                 }
                                 cellSignalStrength?.let {
                                     Row(modifier = Modifier.fillMaxWidth()) {
@@ -86,6 +91,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                         Text(text = "$it dBm", modifier = Modifier.weight(1f))
                                     }
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
                                 }
                                 locationString?.let {
                                     Row(modifier = Modifier.fillMaxWidth()) {
@@ -103,6 +109,8 @@ class MainActivity : ComponentActivity() {
                         var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
                         var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
                         var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
+
+                        Spacer(modifier = Modifier.height(16.dp)) // Increased space between box and fields
 
                         OutlinedTextField(
                             value = thresholdInput,
