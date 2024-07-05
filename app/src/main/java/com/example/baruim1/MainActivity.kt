@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
                     Text(
                         text = "Location: $it",
                         color = Color.White,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        
                     )
                 }
             }
@@ -298,6 +298,10 @@ class MainActivity : ComponentActivity() {
                 val lon = location.longitude
                 locationString = "Lat: $lat, Long: $lon"
 
+                // Always update locationString
+                locationString = "Lat: $lat, Long: $lon"
+
+                // Update cell and location info
                 if (cellSignalStrength != null && cellTechnology != null) {
                     if (cellSignalStrength!! < signalThreshold) {
                         val messageId = UUID.randomUUID().toString()
