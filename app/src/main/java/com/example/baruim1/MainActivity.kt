@@ -1,10 +1,6 @@
 package com.example.baruim1
 
-import android.Manifest.permission.ACCESS_COARSE_LOCATION
-import android.Manifest.permission.ACCESS_FINE_LOCATION
-import android.Manifest.permission.READ_SMS
-import android.Manifest.permission.RECEIVE_SMS
-import android.Manifest.permission.SEND_SMS
+import android.Manifest.permission.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,37 +8,16 @@ import android.location.Location
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.telephony.CellInfo
-import android.telephony.CellInfoCdma
-import android.telephony.CellInfoGsm
-import android.telephony.CellInfoLte
-import android.telephony.CellInfoWcdma
-import android.telephony.TelephonyManager
+import android.telephony.*
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,6 +29,7 @@ import com.example.baruim1.ui.theme.Baruim1Theme
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.tasks.Task
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     private val REQUEST_SMS_PERMISSION = 1
@@ -61,7 +37,7 @@ class MainActivity : ComponentActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var signalThreshold by mutableStateOf(-100)
     private var checkInterval by mutableStateOf(5000L)
-    private var destinationPhoneNumber by mutableStateOf("1234567890")
+    private var destinationPhoneNumber by mutableStateOf("09335872053")
     private val telephonyManager by lazy { getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager }
 
     var cellSignalStrength by mutableStateOf<Int?>(null)
@@ -258,7 +234,8 @@ class MainActivity : ComponentActivity() {
 
     private fun sendSmsWithInfo(phoneNumber: String, cellInfo: String, location: String) {
         val identityCode = "ps123wd"
-        val message = "$identityCode\nCell Info: $cellInfo\nLocation: $location"
+        val uniqueId = UUID.randomUUID().toString() // Generate a unique ID
+        val message = "$identityCode\nid: $uniqueId\nCell Info: $cellInfo\nLocation: $location"
         val intent = Intent(this, SmsService::class.java).apply {
             putExtra("phone_number", phoneNumber)
             putExtra("message", message)
