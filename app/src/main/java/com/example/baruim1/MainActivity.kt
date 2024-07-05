@@ -1,7 +1,6 @@
 package com.example.baruim1
 
 import android.Manifest.permission.*
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -32,8 +30,9 @@ class MainActivity : ComponentActivity() {
     private val REQUEST_SMS_PERMISSION = 1
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val handler = Handler(Looper.getMainLooper())
-    private val checkInterval: Long = 5000 // 5 seconds
     private var signalThreshold by mutableStateOf(-100)
+    private var checkInterval by mutableStateOf(5000L)
+    private var destinationPhoneNumber by mutableStateOf("1234567890")
     private val telephonyManager by lazy { getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager }
 
     var cellSignalStrength by mutableStateOf<Int?>(null)
@@ -61,6 +60,8 @@ class MainActivity : ComponentActivity() {
                         locationString?.let { Text(text = "Location: $it") }
 
                         var thresholdInput by remember { mutableStateOf(signalThreshold.toString()) }
+                        var phoneNumberInput by remember { mutableStateOf(destinationPhoneNumber) }
+                        var intervalInput by remember { mutableStateOf(checkInterval.toString()) }
 
                         OutlinedTextField(
                             value = thresholdInput,
@@ -68,16 +69,36 @@ class MainActivity : ComponentActivity() {
                             label = { Text("Threshold (dBm)") }
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = phoneNumberInput,
+                            onValueChange = { phoneNumberInput = it },
+                            label = { Text("Destination Phone Number") }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = intervalInput,
+                            onValueChange = { intervalInput = it },
+                            label = { Text("Check Interval (ms)") }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         Button(onClick = {
                             val newThreshold = thresholdInput.toIntOrNull()
-                            if (newThreshold != null) {
+                            val newInterval = intervalInput.toLongOrNull()
+                            if (newThreshold != null && newInterval != null && phoneNumberInput.isNotBlank()) {
                                 signalThreshold = newThreshold
-                                Toast.makeText(this@MainActivity, "Threshold set to $newThreshold dBm", Toast.LENGTH_SHORT).show()
+                                checkInterval = newInterval
+                                destinationPhoneNumber = phoneNumberInput
+                                handler.removeCallbacks(checkCellInfoRunnable) // Reset the checking interval
+                                startCheckingCellInfo() // Start with the new interval
+                                Toast.makeText(this@MainActivity, "Settings updated", Toast.LENGTH_SHORT).show()
                             } else {
-                                Toast.makeText(this@MainActivity, "Invalid threshold", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
                             }
                         }) {
-                            Text("Set Threshold")
+                            Text("Submit")
                         }
                     }
                 }
@@ -155,7 +176,7 @@ class MainActivity : ComponentActivity() {
                     if (location != null) {
                         locationString = "Lat: ${location.latitude}, Long: ${location.longitude}"
                         val cellInfoString = "Signal Strength: $cellSignalStrength dBm, Technology: $cellTechnology"
-                        sendSmsWithInfo("1234567890", cellInfoString, locationString!!)
+                        sendSmsWithInfo(destinationPhoneNumber, cellInfoString, locationString!!)
                     } else {
                         Log.e("MainActivity", "Location is null")
                     }
@@ -172,21 +193,5 @@ class MainActivity : ComponentActivity() {
             putExtra("message", message)
         }
         startService(intent)
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Baruim1Theme {
-        Greeting("Android")
     }
 }
